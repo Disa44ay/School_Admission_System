@@ -1,0 +1,39 @@
+# Allowlist: only deliverables and app code are tracked.
+/*
+!/.gitignore
+!/.gitattributes
+!/README.md
+!/ASSUMPTIONS.md
+!/AI_USAGE.md
+!/docker-compose.yml
+!/backend/
+!/frontend/
+
+# Explicitly local, even if the allowlist above changes.
+CLAUDE.md
+SKILL.md
+requirement.md
+decision.md
+.claude/
+claude-mem/
+
+# .NET
+bin/
+obj/
+.vs/
+*.user
+
+# Node
+node_modules/
+dist/
+*.tsbuildinfo
+
+# Env
+.env
+.env.*
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

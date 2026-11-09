@@ -1,0 +1,5 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/SchoolAdmission.Api/SchoolAdmission.Api.csproj" />
+  </Folder>
+</Solution>
