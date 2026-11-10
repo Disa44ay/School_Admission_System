@@ -5,8 +5,7 @@ services:
       POSTGRES_DB: school_admission
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-    ports:
-      - "5432:5432"
+    # No host port: the API reaches the db over the compose network.
     volumes:
       - pgdata:/var/lib/postgresql
     healthcheck:
@@ -20,7 +19,7 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__DefaultConnection: Host=db;Port=5432;Database=school_admission;Username=postgres;Password=postgres
-      Cors__FrontendOrigin: http://localhost:5173
+      HOLD_DURATION_SECONDS: ${HOLD_DURATION_SECONDS:-600}
     ports:
       - "8080:8080"
     depends_on:

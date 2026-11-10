@@ -1,6 +1,5 @@
-using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using Scalar.AspNetCore;
-using SchoolAdmission.Api.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -8,14 +7,11 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 if (string.IsNullOrWhiteSpace(connectionString))
     throw new InvalidOperationException("ConnectionStrings:DefaultConnection is not set.");
 
-builder.Services.AddDbContext<AppDbContext>(o => o.UseNpgsql(connectionString));
-builder.Services.AddControllers();
+builder.Services.AddSingleton(NpgsqlDataSource.Create(connectionString));
 builder.Services.AddProblemDetails();
 builder.Services.AddOpenApi();
-builder.Services.AddCors(o => o.AddDefaultPolicy(p => p
-    .WithOrigins(builder.Configuration["Cors:FrontendOrigin"] ?? "http://localhost:5173")
-    .AllowAnyHeader()
-    .AllowAnyMethod()));
+// Any origin: there are no cookies or logins to protect (see ASSUMPTIONS.md).
+builder.Services.AddCors(o => o.AddDefaultPolicy(p => p.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod()));
 
 var app = builder.Build();
 
@@ -28,6 +24,19 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors();
-app.MapControllers();
+
+app.MapGet("/health", async (NpgsqlDataSource db, CancellationToken ct) =>
+{
+    try
+    {
+        await using var cmd = db.CreateCommand("SELECT 1");
+        await cmd.ExecuteScalarAsync(ct);
+        return Results.Ok(new { status = "Healthy" });
+    }
+    catch (NpgsqlException)
+    {
+        return Results.Json(new { status = "Database unreachable" }, statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
+});
 
 app.Run();

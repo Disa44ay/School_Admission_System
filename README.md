@@ -16,7 +16,10 @@ docker compose up --build
 |---|---|
 | Frontend | http://localhost:5173 |
 | API | http://localhost:8080 |
-| PostgreSQL | `localhost:5432` for now. The port will be closed before submission; see ASSUMPTIONS.md. |
+| API health | http://localhost:8080/health (200 when the database is reachable, 503 when it isn't) |
+| PostgreSQL | No host port. To inspect it: `docker compose exec db psql -U postgres -d school_admission` |
+
+CI (GitHub Actions) builds the images, starts the stack and checks both URLs on every push.
 
 Stop with `docker compose down`. Data survives in the `pgdata` volume. `docker compose down -v` deletes it.
 

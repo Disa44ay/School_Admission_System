@@ -6,6 +6,7 @@
 !/ASSUMPTIONS.md
 !/AI_USAGE.md
 !/docker-compose.yml
+!/.github/
 !/backend/
 !/frontend/
 # Design diagrams only; the rest of planning/ stays local.
