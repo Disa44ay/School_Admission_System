@@ -2,7 +2,7 @@
 
 First-come, first-served seat booking for school admissions. ASP.NET Core (.NET 10) API, React + Vite frontend, PostgreSQL 18.
 
-**Status:** the backend is done. All 8 endpoints work, expired holds are marked every second, and 42 backend tests pass, including the concurrency test. Not yet: the UI and the frontend tests.
+**Status:** feature-complete. All 8 endpoints work. The bilingual UI (Bangla by default, English switch) is at http://localhost:5173. 42 backend tests, 12 frontend tests and a 14-step Playwright end-to-end check pass in Docker.
 
 ## Run
 
@@ -46,7 +46,11 @@ Backend tests (xUnit, against a real PostgreSQL in compose; each run uses a thro
 docker compose --profile test run --rm backend-tests
 ```
 
-Frontend tests: not written yet.
+Frontend tests (Vitest + React Testing Library, jsdom):
+
+```bash
+docker compose --profile test run --rm frontend-tests
+```
 
 ## Design
 

@@ -28,6 +28,9 @@ jobs:
       - name: Backend tests (real PostgreSQL in compose)
         run: docker compose --profile test run --rm backend-tests
 
+      - name: Frontend tests (Vitest + React Testing Library)
+        run: docker compose --profile test run --rm frontend-tests
+
       - name: Logs on failure
         if: failure()
         run: docker compose logs

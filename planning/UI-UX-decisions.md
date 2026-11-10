@@ -89,3 +89,10 @@ After the build, `sloplint --scope app` runs on the frontend files with the dev 
 |---|---|---|
 | 9 | Data states | The class list and আমার আবেদন each have four states. **Loading:** skeleton rows in the shape of the real rows. **Empty:** for applicants, "কোনো শ্রেণি এখনো খোলা হয়নি", which means no class has opened yet; for admins, the same message plus a pointer to the form. **Error:** the banner from decision 6 while the last data stays visible, or, if nothing has loaded yet, one line saying what broke and that it retries every 3 s. **Full:** the normal list. |
 | 10 | Numbers and motion | Tabular numerals for every count and the timer. The countdown updates every 250 ms from `expiresAt`, and at 0 the slip turns grey, says মেয়াদ উত্তীর্ণ ("expired") and disables pay. Only state changes animate. |
+
+## 6. Changes after the first build
+
+| # | Change | Why |
+|---|---|---|
+| 11 | Every load opens on the Parent view; the view isn't saved. This replaces the `localStorage` view and the state-in-URL waiver. | The user found the page opening on Admin because the last view was saved. |
+| 12 | The ID field is always editable, with no Confirm or Change button. A valid number is active at once. Wrong characters or more than 17 digits show an error immediately; a number that's too short shows it when the field loses focus. | The user found the read-only field plus a "change" step needlessly complex. |

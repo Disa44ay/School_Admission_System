@@ -1,6 +1,39 @@
 # Automated tests and results
 
-**42 backend tests, all passing.** They ran three times in a row locally, and on every push in GitHub Actions inside Docker (CI run 4, commit `2ae88cb`). Frontend tests are not written yet.
+**42 backend tests, all passing.** They ran three times in a row locally, and on every push in GitHub Actions inside Docker (CI run 4, commit `2ae88cb`). **12 frontend tests, all passing** (Vitest + React Testing Library, jsdom). **A 14-step end-to-end browser check passes** (Playwright, run with the webapp-testing skill against the Docker stack). All three suites also pass inside Docker: 42/42, 12/12 and 14/14.
+
+## Frontend tests (Bonus 2)
+
+| Area | What is checked |
+|---|---|
+| Rendering | Classes and seat counts appear in Bangla by default. Without an ID, "আবেদন করুন" is disabled and a hint explains why. The switch changes every label to English and back. |
+| No stray English | In Bangla mode the rendered page contains no Latin letters, except class names and the "EN" switch. English and Bangla have exactly the same string keys, and no string is empty. |
+| 17-digit ID | 16 digits, 18 digits and letters are rejected inline. Bangla digits are accepted and converted. The ID is saved in `localStorage` and sent as `X-Student-Id` after a reload. |
+| Countdown | With fake timers, a 2-second hold counts down, then shows মেয়াদ উত্তীর্ণ ("expired") and disables "ভর্তি ফি দিন", with no reload. |
+| Errors | When the server is unreachable, a banner and an error notice appear instead of a blank page. A 409 shows "আসন খালি নেই" ("no seats free"). The admin form validates inline before calling the API. |
+
+`fetch` is stubbed in these tests. One more test checks that every page load opens on the Parent view.
+
+## End-to-end browser check (Playwright, headless Chromium)
+
+The real Docker stack ran with `HOLD_DURATION_SECONDS=15`. Result: **14/14 passed, no console errors.**
+
+1. The page opens on the Parent view, in Bangla.
+2. The admin creates a 2-seat class through the form, and a toast confirms it.
+3. Without an ID, the apply button is disabled.
+4. Letters in the ID show an inline error at once.
+5. A valid ID clears the error and enables apply.
+6. A hold shows the slip and its countdown.
+7. The class row shows the timer and the held count.
+8. A reload keeps the ID and the slip, and stays on Parent.
+9. At 0 the hold shows মেয়াদ উত্তীর্ণ ("expired") and the seat frees, with no reload.
+10. Paying confirms the seat.
+11. A second parent takes the last seat.
+12. A third parent sees "আসন নেই" ("no seats").
+13. The English switch works.
+14. At 375 px wide the page doesn't scroll sideways.
+
+This run also found one usability bug. Toasts stacked up and covered the class list on a phone, so now only the newest toast shows.
 
 ## Tools
 

@@ -112,12 +112,15 @@ Concurrent confirms wait on the row lock, so `confirmedSeats` rises only once. C
 
 - **TypeScript, not JavaScript.** The brief allows either. TypeScript compiles to plain JavaScript and adds type checks before the app runs. The build fails on a misspelt API field, such as `heldSeat` instead of `heldSeats`, or on a status value outside the four contract values. The build already runs `tsc`, so this costs no extra setup.
 
-- Applicant and Admin views are a UI switch saved in `localStorage`; the API doesn't check roles. The Admin view holds the class creation form. The ID bar stays at the top in both views.
+- Applicant and Admin views are a UI switch; the API doesn't check roles. Every page load opens on the Parent view, and the choice isn't remembered, so parents never land on the admin form. The Admin view holds the class creation form. The ID bar stays at the top in both views.
+- The ID field is always editable. The moment it holds a valid 17-digit number, that number becomes active and is saved. A wrong character or more than 17 digits shows an inline error at once. A number that's too short shows its error when the field loses focus.
 - When an ID is entered, and on every page load, the UI calls `GET /me/holds`.
 - Seat counts and "My applications" refresh every 3 s.
 - The countdown runs against the server's `expiresAt`. A wrong browser clock shifts the timer, but the server still rejects a late confirm with 409.
 - Each class shows a seat map with one box per seat: Free, Pending (held) or Occupied (confirmed). It is drawn from the counts, so boxes can't be clicked.
-- Titles, buttons and errors are in Bengali. Every failure shows a toast, including server unreachable or busy.
+- Bangla is the default, and a switch changes to English. In Bangla mode every word is Bangla, so section titles are fully Bangla: "শ্রেণি তৈরি" and "শ্রেণির তালিকা" rather than the brief's mixed "Class তৈরি" and "Class তালিকা". The three buttons keep the brief's exact labels: আবেদন করুন, ভর্তি ফি দিন and বাতিল. Digits stay 0–9. Class names show exactly as stored.
+- The admin picks a class (1–10) and a shift (Morning or Day), and the UI sends the name as `Class {n} - {shift} Shift`.
+- Action results show as toasts and field errors show inline. While the server is unreachable, a banner stays at the top and the last data stays visible. Details: `planning/UI-UX-decisions.md`.
 - Buttons are disabled while their request runs, so a double-click sends one request.
 
 ## Handling 1000 users at once

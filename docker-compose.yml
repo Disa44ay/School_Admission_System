@@ -57,5 +57,11 @@ services:
       db:
         condition: service_healthy
 
+  frontend-tests:
+    profiles: [test]
+    build:
+      context: ./frontend
+      target: test
+
 volumes:
   pgdata:

@@ -33,6 +33,7 @@ The Claude agents audited and cleaned up the scaffold that Gemini Flash 3.8 prod
 - The concurrency tests use `Task.WhenAll` to send 100 holds, or 10 confirms, at the same moment.
 - The full suite ran three times in a row locally to catch flaky timing. GitHub Actions then reran it inside Docker on every push.
 - Bonus 1 was checked by hand: two real API processes, hit with 120 parallel `curl` requests.
+- The UI was tested end to end with the **webapp-testing** skill. That skill writes headless Playwright (Chromium) scripts that drive the real Docker stack the way a parent would: creating a class, applying, a hold expiring, paying, and a full class. All test suites also run inside Docker.
 - Results are in `automatedTestAndResults.md`.
 
 ## Mistakes the AI made and how they were caught
