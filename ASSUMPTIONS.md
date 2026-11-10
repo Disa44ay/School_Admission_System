@@ -70,6 +70,7 @@ CREATE INDEX idx_holds_student_id ON holds (student_id, created_at DESC);
 | Invalid state, for example a full class or confirming an expired hold | 409 |
 | Unique-index race, connection pool exhausted | 409, 503. Never 500 |
 
+- Errors return `{ "error": "..." }`. Malformed JSON returns 400 with ASP.NET's standard problem body instead.
 - `GET /classes`, `GET /classes/{id}` and `GET /holds/{id}` don't need the header.
 - Names are trimmed. Duplicate names are allowed.
 
@@ -90,7 +91,7 @@ CREATE INDEX idx_holds_student_id ON holds (student_id, created_at DESC);
 4. If `HELD + CONFIRMED >= total_seats`: 409.
 5. Insert with `expires_at = NOW() + duration`, then commit, which releases the lock.
 
-The lock lives in PostgreSQL and the API keeps no state in memory, so two API processes on different ports are safe. The partial unique index `(class_id, student_id) WHERE status IN ('HELD','CONFIRMED')` backs up step 3.
+The lock lives in PostgreSQL and the API keeps no state in memory, so two API processes on different ports are safe. The schema is created at startup inside `pg_advisory_xact_lock`, so processes that start together don't collide. The partial unique index `(class_id, student_id) WHERE status IN ('HELD','CONFIRMED')` backs up step 3.
 
 **Confirm and cancel** lock the hold row with `FOR UPDATE`, then check:
 1. Not found: 404.

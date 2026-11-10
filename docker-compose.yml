@@ -36,5 +36,16 @@ services:
     depends_on:
       - api
 
+  backend-tests:
+    profiles: [test]
+    build:
+      context: ./backend
+      target: test
+    environment:
+      TEST_POSTGRES: Host=db;Port=5432;Username=postgres;Password=postgres
+    depends_on:
+      db:
+        condition: service_healthy
+
 volumes:
   pgdata:

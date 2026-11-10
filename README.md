@@ -2,7 +2,7 @@
 
 First-come, first-served seat booking for school admissions. ASP.NET Core (.NET 10) API, React + Vite frontend, PostgreSQL 18.
 
-**Status:** the design is final (schema, locking, expiry, UI flow). The API, UI and tests are not written yet.
+**Status:** the design is final. Done: the schema, the class endpoints (`POST /classes`, `GET /classes`, `GET /classes/{id}`) and their tests. Not yet: the hold endpoints, expiry, the UI and the frontend tests.
 
 ## Run
 
@@ -33,15 +33,13 @@ Stop with `docker compose down`. Data survives in the `pgdata` volume. `docker c
 
 ## Tests
 
-Not written yet. These are the planned commands; both need only Docker:
+Backend tests (xUnit, against a real PostgreSQL in compose; each run uses a throwaway database):
 
 ```bash
 docker compose --profile test run --rm backend-tests
 ```
 
-```bash
-docker compose --profile test run --rm frontend-tests
-```
+Frontend tests: not written yet.
 
 ## Design
 

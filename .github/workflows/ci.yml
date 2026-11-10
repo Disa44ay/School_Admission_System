@@ -25,6 +25,9 @@ jobs:
       - name: Frontend is served
         run: curl --fail --silent --show-error --retry 15 --retry-delay 2 --retry-all-errors -o /dev/null http://localhost:5173
 
+      - name: Backend tests (real PostgreSQL in compose)
+        run: docker compose --profile test run --rm backend-tests
+
       - name: Logs on failure
         if: failure()
         run: docker compose logs
