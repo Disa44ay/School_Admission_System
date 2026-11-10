@@ -110,6 +110,8 @@ Concurrent confirms wait on the row lock, so `confirmedSeats` rises only once. C
 
 ## UI
 
+- **TypeScript, not JavaScript.** The brief allows either. TypeScript compiles to plain JavaScript and adds type checks before the app runs. The build fails on a misspelt API field, such as `heldSeat` instead of `heldSeats`, or on a status value outside the four contract values. The build already runs `tsc`, so this costs no extra setup.
+
 - Applicant and Admin views are a UI switch saved in `localStorage`; the API doesn't check roles. The Admin view holds the class creation form. The ID bar stays at the top in both views.
 - When an ID is entered, and on every page load, the UI calls `GET /me/holds`.
 - Seat counts and "My applications" refresh every 3 s.

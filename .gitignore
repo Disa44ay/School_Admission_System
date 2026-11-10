@@ -16,6 +16,7 @@
 !/planning/diagrams/
 /planning/diagrams/*
 !/planning/diagrams/*.png
+!/planning/UI-UX-decisions.md
 
 # Explicitly local, even if the allowlist above changes.
 CLAUDE.md
@@ -23,7 +24,6 @@ SKILL.md
 requirement.md
 decision.md
 .claude/
-claude-mem/
 
 # .NET
 bin/
