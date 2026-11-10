@@ -22,12 +22,21 @@ public class ConfigTests
     [Fact]
     public void Connection_string_precedence()
     {
-        Assert.Equal("A", AppConfig.ConnectionString(Config(
-            ("DATABASE_CONNECTION_STRING", "A"), ("DATABASE_URL", "postgres://u:p@h/d"), ("ConnectionStrings:DefaultConnection", "C"))));
+        Assert.Contains("Host=a", AppConfig.ConnectionString(Config(
+            ("DATABASE_CONNECTION_STRING", "Host=a"), ("DATABASE_URL", "postgres://u:p@h/d"), ("ConnectionStrings:DefaultConnection", "Host=c"))));
         Assert.Contains("Host=h", AppConfig.ConnectionString(Config(
-            ("DATABASE_CONNECTION_STRING", ""), ("DATABASE_URL", "postgres://u:p@h/d"), ("ConnectionStrings:DefaultConnection", "C"))));
-        Assert.Equal("C", AppConfig.ConnectionString(Config(("DATABASE_URL", ""), ("ConnectionStrings:DefaultConnection", "C"))));
+            ("DATABASE_CONNECTION_STRING", ""), ("DATABASE_URL", "postgres://u:p@h/d"), ("ConnectionStrings:DefaultConnection", "Host=c"))));
+        Assert.Contains("Host=c", AppConfig.ConnectionString(Config(("DATABASE_URL", ""), ("ConnectionStrings:DefaultConnection", "Host=c"))));
         Assert.Contains("Host=db", AppConfig.ConnectionString(Config()));
+    }
+
+    [Fact]
+    public void Pool_is_capped_below_postgres_limit_unless_set()
+    {
+        Assert.Equal(40, new Npgsql.NpgsqlConnectionStringBuilder(
+            AppConfig.ConnectionString(Config(("DATABASE_CONNECTION_STRING", "Host=h;Database=d")))).MaxPoolSize);
+        Assert.Equal(7, new Npgsql.NpgsqlConnectionStringBuilder(
+            AppConfig.ConnectionString(Config(("DATABASE_CONNECTION_STRING", "Host=h;Maximum Pool Size=7")))).MaxPoolSize);
     }
 
     [Fact]

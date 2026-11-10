@@ -120,7 +120,7 @@ Concurrent confirms wait on the row lock, so `confirmedSeats` rises only once. C
 
 ## Handling 1000 users at once
 
-1. Requests wait for a free connection from the pool. The pool limit is set below PostgreSQL's connection limit.
+1. Requests wait for a free connection from the pool. Each API process uses at most 40 connections, unless the connection string sets `Maximum Pool Size`. PostgreSQL allows 100 by default, so two processes (Bonus 1) still leave room for admin connections.
 2. `GET /classes` is one indexed query. 1000 browsers polling every 3 s is about 330 reads per second.
 3. Holds for one class run one at a time on the class lock, a few milliseconds each. Different classes run in parallel.
 4. When no connection frees up before the timeout: 503 and a "server busy" toast.

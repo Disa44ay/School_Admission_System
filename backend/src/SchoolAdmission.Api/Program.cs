@@ -5,6 +5,7 @@ using SchoolAdmission.Api;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddSingleton(NpgsqlDataSource.Create(AppConfig.ConnectionString(builder.Configuration)));
+builder.Services.AddHostedService<HoldExpirySweeper>();
 builder.Services.AddProblemDetails();
 // Development defaults to throwing on bad JSON, which the exception handler turns into a 500. Rule 7: always 400.
 builder.Services.Configure<RouteHandlerOptions>(o => o.ThrowOnBadRequest = false);
@@ -15,9 +16,17 @@ builder.Services.AddCors(o => o.AddDefaultPolicy(p => p.AllowAnyOrigin().AllowAn
 var app = builder.Build();
 
 await Schema.EnsureAsync(app.Services.GetRequiredService<NpgsqlDataSource>());
-app.Logger.LogInformation("Hold duration: {Seconds} s", AppConfig.HoldDurationSeconds(app.Configuration));
+var holdDurationSeconds = AppConfig.HoldDurationSeconds(app.Configuration);
+app.Logger.LogInformation("Hold duration: {Seconds} s", holdDurationSeconds);
 
-app.UseExceptionHandler();
+// Database down or pool exhausted (wait timed out): 503 so the UI can say "busy, try again". Anything else: 500.
+app.UseExceptionHandler(handler => handler.Run(async ctx =>
+{
+    var error = ctx.Features.Get<Microsoft.AspNetCore.Diagnostics.IExceptionHandlerFeature>()?.Error;
+    var busy = error is NpgsqlException and not PostgresException || error is TimeoutException;
+    ctx.Response.StatusCode = busy ? StatusCodes.Status503ServiceUnavailable : StatusCodes.Status500InternalServerError;
+    await ctx.Response.WriteAsJsonAsync(new { error = busy ? "Server is busy, please try again." : "Unexpected server error." });
+}));
 
 if (app.Environment.IsDevelopment())
 {
@@ -42,6 +51,7 @@ app.MapGet("/health", async (NpgsqlDataSource db, CancellationToken ct) =>
 });
 
 app.MapClassEndpoints();
+app.MapHoldEndpoints(holdDurationSeconds);
 
 app.Run();
 

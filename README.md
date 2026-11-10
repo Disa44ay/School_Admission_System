@@ -2,7 +2,7 @@
 
 First-come, first-served seat booking for school admissions. ASP.NET Core (.NET 10) API, React + Vite frontend, PostgreSQL 18.
 
-**Status:** the design is final. Done: the schema, the class endpoints (`POST /classes`, `GET /classes`, `GET /classes/{id}`) and their tests. Not yet: the hold endpoints, expiry, the UI and the frontend tests.
+**Status:** the backend is done. All 8 endpoints work, expired holds are marked every second, and 42 backend tests pass, including the concurrency test. Not yet: the UI and the frontend tests.
 
 ## Run
 

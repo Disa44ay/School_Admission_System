@@ -8,13 +8,23 @@ public static class AppConfig
     private const string DefaultConnectionString =
         "Host=db;Port=5432;Database=school_admission;Username=postgres;Password=postgres";
 
+    // PostgreSQL allows 100 connections by default. Npgsql's default pool is also 100, so one busy process
+    // could take them all. 40 leaves room for a second API process (Bonus 1) and admin connections.
+    public const int DefaultMaxPoolSize = 40;
+
     // First one set wins: DATABASE_CONNECTION_STRING, DATABASE_URL, ConnectionStrings:DefaultConnection, compose default.
-    public static string ConnectionString(IConfiguration config)
+    public static string ConnectionString(IConfiguration config) => WithPoolLimit(
+        config["DATABASE_CONNECTION_STRING"] is { Length: > 0 } cs ? cs
+        : config["DATABASE_URL"] is { Length: > 0 } url ? FromDatabaseUrl(url)
+        : config.GetConnectionString("DefaultConnection") is { Length: > 0 } def ? def
+        : DefaultConnectionString);
+
+    // Keeps an explicit "Maximum Pool Size" from the connection string; otherwise applies the default.
+    private static string WithPoolLimit(string cs)
     {
-        if (config["DATABASE_CONNECTION_STRING"] is { Length: > 0 } cs) return cs;
-        if (config["DATABASE_URL"] is { Length: > 0 } url) return FromDatabaseUrl(url);
-        if (config.GetConnectionString("DefaultConnection") is { Length: > 0 } def) return def;
-        return DefaultConnectionString;
+        var raw = new System.Data.Common.DbConnectionStringBuilder { ConnectionString = cs };
+        if (raw.ContainsKey("Maximum Pool Size") || raw.ContainsKey("Max Pool Size")) return cs;
+        return new NpgsqlConnectionStringBuilder(cs) { MaxPoolSize = DefaultMaxPoolSize }.ConnectionString;
     }
 
     // postgres://user:pass@host:port/db -> Npgsql connection string.
