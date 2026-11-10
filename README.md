@@ -66,3 +66,4 @@ The diagrams are in `planning/diagrams/`:
 
 - `ASSUMPTIONS.md`: a summary of every decision, then the details: schema, validation, concurrency (Bonus 1), load handling and security limits.
 - `AI_USAGE.md`: which AI tools were used, how, and what they got wrong.
+- `automatedTestAndResults.md`: the tests, the tools used and the concurrency results.

@@ -26,7 +26,19 @@ The developer focuses on security and backend optimization and keeps pushing the
 
 The Claude agents audited and cleaned up the scaffold that Gemini Flash 3.8 produced.
 
+## How the automated tests were run
+
+- The manager agent wrote the xUnit tests from the rules in `ASSUMPTIONS.md`. A rule only counted as done after a test proved it.
+- The tests start the real API in memory with `WebApplicationFactory` and use a real PostgreSQL, never mocks. Each run gets a throwaway database.
+- The concurrency tests use `Task.WhenAll` to send 100 holds, or 10 confirms, at the same moment.
+- The full suite ran three times in a row locally to catch flaky timing. GitHub Actions then reran it inside Docker on every push.
+- Bonus 1 was checked by hand: two real API processes, hit with 120 parallel `curl` requests.
+- Results are in `automatedTestAndResults.md`.
+
 ## Mistakes the AI made and how they were caught
+
+- **Connection pool too large.** The concurrency test failed with PostgreSQL's "too many clients": the default pool of 100 matched PostgreSQL's whole limit. Caught by the test suite and fixed with a cap of 40 per API process.
+- **500 on malformed JSON.** In Development, ASP.NET throws on bad JSON, and the first version returned 500 instead of 400. Caught by the validation tests and fixed.
 
 - **Wrong frontend framework.** Gemini scaffolded Next.js, but the brief requires React with Vite. Caught during the scaffold audit; the frontend was rebuilt on Vite.
 - **Bloat in the scaffold.** It had unused UI components, an unrelated npm package, middleware that duplicated an ASP.NET Core built-in, and an oversized start script. Caught by reading every file. All of it was removed.
