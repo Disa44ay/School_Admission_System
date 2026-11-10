@@ -1,15 +1,17 @@
+# Every setting has a ${VAR:-default} fallback: a fresh clone runs with no .env file.
+# Override from .env (see .env.example) or the shell, e.g. HOLD_DURATION_SECONDS=2 docker compose up
 services:
   db:
     image: postgres:18-alpine
     environment:
-      POSTGRES_DB: school_admission
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ${POSTGRES_DB:-school_admission}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
     # No host port: the API reaches the db over the compose network.
     volumes:
       - pgdata:/var/lib/postgresql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d school_admission"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -18,7 +20,10 @@ services:
     build: ./backend
     environment:
       ASPNETCORE_ENVIRONMENT: Development
-      ConnectionStrings__DefaultConnection: Host=db;Port=5432;Database=school_admission;Username=postgres;Password=postgres
+      # The API uses the first one that is set: DATABASE_CONNECTION_STRING, DATABASE_URL, then this default.
+      DATABASE_CONNECTION_STRING: ${DATABASE_CONNECTION_STRING:-}
+      DATABASE_URL: ${DATABASE_URL:-}
+      ConnectionStrings__DefaultConnection: Host=db;Port=5432;Database=${POSTGRES_DB:-school_admission};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-postgres}
       HOLD_DURATION_SECONDS: ${HOLD_DURATION_SECONDS:-600}
     ports:
       - "8080:8080"
@@ -30,7 +35,12 @@ services:
     build:
       context: ./frontend
       args:
-        VITE_API_URL: http://localhost:8080
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8080}
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:8080}
+    # Vite bakes these in at build time; set here too for visibility, they have no runtime effect.
+    environment:
+      VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8080}
+      VITE_API_URL: ${VITE_API_URL:-http://localhost:8080}
     ports:
       - "5173:80"
     depends_on:
@@ -42,7 +52,7 @@ services:
       context: ./backend
       target: test
     environment:
-      TEST_POSTGRES: Host=db;Port=5432;Username=postgres;Password=postgres
+      TEST_POSTGRES: Host=db;Port=5432;Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-postgres}
     depends_on:
       db:
         condition: service_healthy

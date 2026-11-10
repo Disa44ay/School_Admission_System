@@ -6,7 +6,7 @@
 - **Identity.** No login. The student types their own 17-digit birth registration number. It is saved in `localStorage` and sent as `X-Student-Id`.
 - **Data.** Our own schema (the brief has none): two tables, `classes` and `holds`, plus three indexes. Seat counts are calculated on every read, never stored. A cancelled hold is a status change, never a deleted row.
 - **No overbooking.** Every hold locks its class row in PostgreSQL (`FOR UPDATE`), so the check and the insert run one at a time per class, even across several API processes.
-- **Expiry.** A hold stops counting the moment `expires_at` passes, because every query compares against `NOW()`. A 5-second background sweep keeps the stored status correct.
+- **Expiry.** A hold stops counting the moment `expires_at` passes, because every query compares against `NOW()`. A 1-second background sweep keeps the stored status correct.
 - **One application per class.** Checked inside the transaction and backed by a partial unique index. A student may apply to different classes.
 - **Confirm is idempotent.** Confirming a confirmed hold returns 200 and changes nothing.
 - **UI.** Applicant and Admin views. Data refreshes every 3 s. Live countdown, a seat map built from the counts, and a Bengali toast for every error.
@@ -76,7 +76,12 @@ CREATE INDEX idx_holds_student_id ON holds (student_id, created_at DESC);
 
 ## Hold lifecycle
 
-- `HOLD_DURATION_SECONDS` comes from `.env`, defaults to 600, and is read at startup. Changing it affects new holds only.
+- `HOLD_DURATION_SECONDS` comes from the environment or `.env` and is read at startup. If it is missing, not a whole number, or 0 or less, the API uses 600. Changing it affects new holds only. For a quick expiry test, run `HOLD_DURATION_SECONDS=2 docker compose up`.
+- `expires_at` is set to `NOW() + duration` by PostgreSQL, not by the API's clock. It is returned as ISO-8601 UTC, ending in `Z`.
+- Expiry has three layers, so even a 2-second hold expires on time:
+  1. Seat counts and the place-hold check ignore `HELD` rows with `expires_at <= NOW()`.
+  2. `GET /holds/{id}`, `GET /me/holds`, confirm and cancel change a past-due `HELD` row to `EXPIRED` before they answer.
+  3. A background job runs `UPDATE ... SET status = 'EXPIRED'` every second.
 - All time checks use the PostgreSQL clock, so every API process agrees on when a hold expires.
 - Confirming a confirmed hold returns 200. Confirming an expired or cancelled hold returns 409.
 - Only a live `HELD` hold can be cancelled. Any other status returns 409.
@@ -136,6 +141,12 @@ These figures are estimates. A load test with 1000 parallel clients will check t
 ## Infrastructure
 
 - CORS allows any origin. There are no cookies or logins to protect.
-- `VITE_API_URL` is fixed at frontend build time.
+- Every setting in `docker-compose.yml` has a `${VAR:-default}` fallback. A fresh clone runs with no `.env` file. To override a setting, use a `.env` file (see `.env.example`) or the command line. `.env` is never committed.
+- The API reads its database connection from the first of these that is set:
+  1. `DATABASE_CONNECTION_STRING`
+  2. `DATABASE_URL`, in `postgres://user:pass@host:port/db` form, converted to a connection string
+  3. `ConnectionStrings__DefaultConnection`
+  4. a default pointing at the compose `db` service.
+- The frontend's API URL is `VITE_API_BASE_URL`, then `VITE_API_URL`, then `http://localhost:8080`. Vite builds these values into the files, so they must be set at build time: `docker compose build` reads them from the environment. Compose also sets them on the running web container, but there they have no effect.
 - Database credentials are development values (`postgres`/`postgres`).
 - Data lives in the `pgdata` volume. It survives `docker compose down`; `docker compose down -v` deletes it.

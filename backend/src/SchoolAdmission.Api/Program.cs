@@ -4,11 +4,7 @@ using SchoolAdmission.Api;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-if (string.IsNullOrWhiteSpace(connectionString))
-    throw new InvalidOperationException("ConnectionStrings:DefaultConnection is not set.");
-
-builder.Services.AddSingleton(NpgsqlDataSource.Create(connectionString));
+builder.Services.AddSingleton(NpgsqlDataSource.Create(AppConfig.ConnectionString(builder.Configuration)));
 builder.Services.AddProblemDetails();
 // Development defaults to throwing on bad JSON, which the exception handler turns into a 500. Rule 7: always 400.
 builder.Services.Configure<RouteHandlerOptions>(o => o.ThrowOnBadRequest = false);
@@ -19,6 +15,7 @@ builder.Services.AddCors(o => o.AddDefaultPolicy(p => p.AllowAnyOrigin().AllowAn
 var app = builder.Build();
 
 await Schema.EnsureAsync(app.Services.GetRequiredService<NpgsqlDataSource>());
+app.Logger.LogInformation("Hold duration: {Seconds} s", AppConfig.HoldDurationSeconds(app.Configuration));
 
 app.UseExceptionHandler();
 

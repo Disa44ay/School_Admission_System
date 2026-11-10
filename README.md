@@ -25,11 +25,18 @@ Stop with `docker compose down`. Data survives in the `pgdata` volume. `docker c
 
 ## Configuration
 
-| Variable | Where | Default |
+No `.env` file is needed. Every value has a default. To change one, copy `.env.example` to `.env`, or set it in the shell:
+
+```bash
+HOLD_DURATION_SECONDS=2 docker compose up --build
+```
+
+| Variable | Used by | Default |
 |---|---|---|
-| `ConnectionStrings__DefaultConnection` | API | set in `docker-compose.yml` |
-| `HOLD_DURATION_SECONDS` | API, from the root `.env` | `600` |
-| `VITE_API_URL` | frontend build | `http://localhost:8080` |
+| `HOLD_DURATION_SECONDS` | API | `600` (also used when the value is invalid or 0 or less) |
+| `DATABASE_CONNECTION_STRING`, `DATABASE_URL`, `ConnectionStrings__DefaultConnection` | API: the first one set wins | the compose `db` service |
+| `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD` | db | `school_admission`, `postgres`, `postgres` |
+| `VITE_API_BASE_URL`, then `VITE_API_URL` | frontend build | `http://localhost:8080` |
 
 ## Tests
 
