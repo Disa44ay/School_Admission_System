@@ -25,6 +25,7 @@ SKILL.md
 requirement.md
 decision.md
 .claude/
+.hallmark/
 
 # .NET
 bin/

@@ -26,6 +26,9 @@ public static class Schema
             updated_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW()
         );
 
+        -- One class per name, ignoring case and outer spaces ("Class 6 - Morning Shift" = "class 6 - morning shift").
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_classes_name_unique ON classes (lower(btrim(name)));
+
         CREATE UNIQUE INDEX IF NOT EXISTS idx_holds_one_active_per_student_class
             ON holds (class_id, student_id) WHERE status IN ('HELD', 'CONFIRMED');
         CREATE INDEX IF NOT EXISTS idx_holds_class_status_expires ON holds (class_id, status, expires_at);

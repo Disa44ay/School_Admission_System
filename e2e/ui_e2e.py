@@ -9,8 +9,8 @@ from playwright.sync_api import sync_playwright, expect
 
 OUT = sys.argv[1] if len(sys.argv) > 1 else os.path.join(os.path.dirname(os.path.abspath(__file__)), "screenshots")
 URL = "http://localhost:5173"
-CLASS_NO, SHIFT = "5", "Day"
-NAME = f"Class {CLASS_NO} - {SHIFT} Shift"
+# Class names are unique, so each run creates its own class through the custom-name option.
+NAME = f"E2E class {random.randrange(16**6):06x}"
 SID = "2026" + "".join(random.choice("0123456789") for _ in range(13))
 results, console_errors = [], []
 
@@ -33,13 +33,18 @@ with sync_playwright() as p:
 
     # Admin creates a 2-seat class through the form
     page.get_by_role("button", name="অ্যাডমিন").click()
-    page.get_by_label("শ্রেণি", exact=True).select_option(CLASS_NO)
-    page.get_by_label("শিফট").select_option(SHIFT)
+    page.get_by_label("নিজের পছন্দের নাম দিন").check()
+    page.get_by_label("শ্রেণির নাম (ইংরেজিতে)").fill(NAME)
     page.get_by_label("মোট আসন").fill("2")
     page.get_by_role("button", name="শ্রেণি তৈরি করুন").click()
     check("admin creates class, toast shown", lambda: (
         expect(page.get_by_text("শ্রেণি তৈরি হয়েছে।")).to_be_visible(),
         expect(page.get_by_text(NAME).first).to_be_visible()))
+    page.get_by_label("নিজের পছন্দের নাম দিন").check()
+    page.get_by_label("শ্রেণির নাম (ইংরেজিতে)").fill(NAME.upper())
+    page.get_by_label("মোট আসন").fill("2")
+    page.get_by_role("button", name="শ্রেণি তৈরি করুন").click()
+    check("same name again (any case) is blocked inline", lambda: expect(page.get_by_text("এই নামে একটি শ্রেণি আগে থেকেই আছে।")).to_be_visible())
     page.screenshot(path=f"{OUT}/1-admin.png", full_page=True)
 
     # Parent: ID field is always editable; errors inline

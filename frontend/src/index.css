@@ -16,6 +16,8 @@
   --color-ink: #1c2329;
   --color-muted: #55606b;
   --color-line: #d9dee3;
+  /* field edges: >= 3:1 against the white surface (gate 40) */
+  --color-edge: #858f99;
   --color-surface: #ffffff;
   --color-page: #f6f7f8;
   --font-sans: "Hind Siliguri", "Noto Sans Bengali", "Nirmala UI", system-ui, -apple-system, "Segoe UI", sans-serif;

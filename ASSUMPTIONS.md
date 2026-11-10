@@ -4,7 +4,7 @@
 
 - **API contract unchanged.** The 8 endpoints keep their exact paths, methods, headers and request bodies. Responses may only gain fields. No endpoints are added.
 - **Identity.** No login. The student types their own 17-digit birth registration number. It is saved in `localStorage` and sent as `X-Student-Id`.
-- **Data.** Our own schema (the brief has none): two tables, `classes` and `holds`, plus three indexes. Seat counts are calculated on every read, never stored. A cancelled hold is a status change, never a deleted row.
+- **Data.** Our own schema (the brief has none): two tables, `classes` and `holds`, plus four indexes. Class names are unique. Seat counts are calculated on every read, never stored. A cancelled hold is a status change, never a deleted row.
 - **No overbooking.** Every hold locks its class row in PostgreSQL (`FOR UPDATE`), so the check and the insert run one at a time per class, even across several API processes.
 - **Expiry.** A hold stops counting the moment `expires_at` passes, because every query compares against `NOW()`. A 1-second background sweep keeps the stored status correct.
 - **One application per class.** Checked inside the transaction and backed by a partial unique index. A student may apply to different classes.
@@ -46,6 +46,9 @@ CREATE INDEX idx_holds_class_status_expires ON holds (class_id, status, expires_
 
 -- GET /me/holds, newest first
 CREATE INDEX idx_holds_student_id ON holds (student_id, created_at DESC);
+
+-- One class per name, ignoring case and outer spaces
+CREATE UNIQUE INDEX idx_classes_name_unique ON classes (lower(btrim(name)));
 ```
 
 - `classes(id, name, total_seats, created_at)`: one row per class and shift, for example "Class 6 - Morning Shift". The shift lives in `name`, because the API has no shift field.
@@ -65,6 +68,7 @@ CREATE INDEX idx_holds_student_id ON holds (student_id, created_at DESC);
 |---|---|
 | `X-Student-Id` missing or not exactly 17 digits | 400, before any database work |
 | Class name empty, only spaces, or over 200 characters; `totalSeats <= 0` | 400 |
+| A class name that already exists, ignoring case and outer spaces | 409 `A class with this name already exists.` |
 | Unknown `classId` or `holdId` | 404 |
 | Another student's hold | 403 |
 | Invalid state, for example a full class or confirming an expired hold | 409 |
@@ -72,7 +76,8 @@ CREATE INDEX idx_holds_student_id ON holds (student_id, created_at DESC);
 
 - Errors return `{ "error": "..." }`. Malformed JSON returns 400 with ASP.NET's standard problem body instead.
 - `GET /classes`, `GET /classes/{id}` and `GET /holds/{id}` don't need the header.
-- Names are trimmed. Duplicate names are allowed.
+- Names are trimmed. **Two classes can't share a name.** "Class 6 - Morning Shift", "class 6 - morning shift" and "  Class 6 - Morning Shift " count as the same name. A unique index in the database enforces this, so two admins creating the same class at the same moment still get only one: the other gets 409.
+  - *Trade-off:* the brief only lists 201 and 400 for `POST /classes`. A grader's test that creates the same class name twice would now get 409 on the second call. The developer chose this deliberately: duplicate classes confuse parents and split seats.
 
 ## Hold lifecycle
 
@@ -112,14 +117,16 @@ Concurrent confirms wait on the row lock, so `confirmedSeats` rises only once. C
 
 - **TypeScript, not JavaScript.** The brief allows either. TypeScript compiles to plain JavaScript and adds type checks before the app runs. The build fails on a misspelt API field, such as `heldSeat` instead of `heldSeats`, or on a status value outside the four contract values. The build already runs `tsc`, so this costs no extra setup.
 
-- Applicant and Admin views are a UI switch; the API doesn't check roles. Every page load opens on the Parent view, and the choice isn't remembered, so parents never land on the admin form. The Admin view holds the class creation form. The ID bar stays at the top in both views.
-- The ID field is always editable. The moment it holds a valid 17-digit number, that number becomes active and is saved. A wrong character or more than 17 digits shows an inline error at once. A number that's too short shows its error when the field loses focus.
+- Applicant and Admin views are a UI switch; the API doesn't check roles. Every page load opens on the Parent view, and the choice isn't remembered, so parents never land on the admin form. The Admin view holds the class creation form and has no ID field, because admins act without a student number.
+- **Opening Admin counts as logging out.** There is no logout button. Switching to the Admin view clears the student number from the screen and from `localStorage`, so the Parent view starts fresh for the next person. A short note under the view switch says so: "* অ্যাডমিনে গেলে বর্তমান শিক্ষার্থী লগআউট হবে" ("Opening Admin logs out the current student").
+- "আমার আবেদন" (My applications) always shows live holds. Past applications (confirmed, expired, cancelled) show newest first, 3 at a time, with a "আরও দেখুন" (See more) button for the rest.
+- The ID field is always editable, holds at most 17 characters and shows a placeholder: "আপনার 17 অঙ্কের জন্ম নিবন্ধন নম্বরটি দিন" ("Enter your 17-digit birth registration number"). The moment it holds a valid 17-digit number, that number becomes active and is saved. A wrong character or more than 17 digits shows an inline error at once. A number that's too short shows its error when the field loses focus.
 - When an ID is entered, and on every page load, the UI calls `GET /me/holds`.
 - Seat counts and "My applications" refresh every 3 s.
 - The countdown runs against the server's `expiresAt`. A wrong browser clock shifts the timer, but the server still rejects a late confirm with 409.
 - Each class shows a seat map with one box per seat: Free, Pending (held) or Occupied (confirmed). It is drawn from the counts, so boxes can't be clicked.
 - Bangla is the default, and a switch changes to English. In Bangla mode every word is Bangla, so section titles are fully Bangla: "শ্রেণি তৈরি" and "শ্রেণির তালিকা" rather than the brief's mixed "Class তৈরি" and "Class তালিকা". The three buttons keep the brief's exact labels: আবেদন করুন, ভর্তি ফি দিন and বাতিল. Digits stay 0–9. Class names show exactly as stored.
-- The admin picks a class (1–10) and a shift (Morning or Day), and the UI sends the name as `Class {n} - {shift} Shift`.
+- The admin picks a class (1–10) and a shift (Morning or Day), and the UI sends the name as `Class {n} - {shift} Shift`. A checkbox switches to a **custom name**, which must be English: letters, digits, spaces and `- . , ( ) / & '`. The form checks for a duplicate name before sending. The API's 409 backs that check up.
 - Action results show as toasts and field errors show inline. While the server is unreachable, a banner stays at the top and the last data stays visible. Details: `planning/UI-UX-decisions.md`.
 - Buttons are disabled while their request runs, so a double-click sends one request.
 

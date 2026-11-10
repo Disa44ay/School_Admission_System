@@ -35,9 +35,17 @@ public static class ClassEndpoints
 
             var id = $"c_{Guid.NewGuid():N}";
             await using var conn = await db.OpenConnectionAsync();
-            await conn.ExecuteAsync(
-                "INSERT INTO classes (id, name, total_seats) VALUES (@id, @name, @seats)",
-                new { id, name, seats = req.TotalSeats });
+            try
+            {
+                await conn.ExecuteAsync(
+                    "INSERT INTO classes (id, name, total_seats) VALUES (@id, @name, @seats)",
+                    new { id, name, seats = req.TotalSeats });
+            }
+            catch (PostgresException e) when (e.SqlState == PostgresErrorCodes.UniqueViolation)
+            {
+                // The unique index decides, so two admins creating the same name at once still get one class.
+                return Results.Json(new { error = "A class with this name already exists." }, statusCode: StatusCodes.Status409Conflict);
+            }
             return Results.Created($"/classes/{id}", new { id, name, totalSeats = req.TotalSeats });
         });
 

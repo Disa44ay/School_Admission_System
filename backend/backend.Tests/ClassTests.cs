@@ -48,6 +48,30 @@ public class ClassTests(DatabaseFixture db)
     }
 
     [Fact]
+    public async Task Duplicate_class_name_returns_409_ignoring_case_and_spaces()
+    {
+        var name = $"Class 7 - Day Shift {Guid.NewGuid():N}";
+        Assert.Equal(HttpStatusCode.Created, (await _client.PostAsJsonAsync("/classes", new { name, totalSeats = 5 })).StatusCode);
+
+        foreach (var again in new[] { name, name.ToUpperInvariant(), $"  {name}  " })
+        {
+            var res = await _client.PostAsJsonAsync("/classes", new { name = again, totalSeats = 9 });
+            Assert.Equal(HttpStatusCode.Conflict, res.StatusCode);
+            Assert.Contains("already exists", await res.Content.ReadAsStringAsync());
+        }
+    }
+
+    [Fact]
+    public async Task Parallel_creates_with_one_name_make_one_class()
+    {
+        var name = $"Race {Guid.NewGuid():N}";
+        var results = await Task.WhenAll(Enumerable.Range(0, 10)
+            .Select(_ => _client.PostAsJsonAsync("/classes", new { name, totalSeats = 5 })));
+        Assert.Equal(1, results.Count(r => r.StatusCode == HttpStatusCode.Created));
+        Assert.Equal(9, results.Count(r => r.StatusCode == HttpStatusCode.Conflict));
+    }
+
+    [Fact]
     public async Task Name_longer_than_200_characters_returns_400()
     {
         var res = await _client.PostAsJsonAsync("/classes", new { name = new string('a', 201), totalSeats = 5 });

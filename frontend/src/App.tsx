@@ -128,7 +128,13 @@ export default function App() {
           setHolds(null);
         }}
         view={view}
-        onView={setView}
+        onView={(v) => {
+          if (v === "admin") {
+            setStudentId("");
+            setHolds(null);
+          }
+          setView(v);
+        }}
         lang={lang}
         onLang={() => setLang(lang === "bn" ? "en" : "bn")}
       />

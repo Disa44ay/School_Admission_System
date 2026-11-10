@@ -64,6 +64,7 @@ export function errorKey(status: number, error: string): StringKey {
   if (status === 400) return error.startsWith("X-Student-Id") ? "studentIdInvalid" : "errInvalid";
   if (status === 409) {
     if (error.startsWith("No seats")) return "errFull";
+    if (error.startsWith("A class with this name")) return "errDuplicateClass";
     if (error.startsWith("You already have")) return "errDuplicate";
     if (error.includes("expired")) return "errExpired";
     return "errNotActive";

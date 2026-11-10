@@ -2,7 +2,7 @@
 
 First-come, first-served seat booking for school admissions. ASP.NET Core (.NET 10) API, React + Vite frontend, PostgreSQL 18.
 
-**Status:** feature-complete. All 8 endpoints work. The bilingual UI (Bangla by default, English switch) is at http://localhost:5173. 42 backend tests, 12 frontend tests and a 14-step Playwright end-to-end check pass in Docker.
+**Status:** feature-complete. All 8 endpoints work. The bilingual UI (Bangla by default, English switch) is at http://localhost:5173. 44 backend tests and 18 frontend tests pass in Docker, and a 15-step Playwright end-to-end check passes.
 
 ## Run
 
@@ -21,20 +21,22 @@ docker compose up --build
 
 CI (GitHub Actions) runs on every push. It builds the images, starts the stack, checks both URLs and runs the backend and frontend tests.
 
+Stop with `docker compose down`. Data survives in the `pgdata` volume. `docker compose down -v` deletes it.
+
 ## Using the UI
 
 The UI opens in Bangla on the **অভিভাবক** (Parent) view. **EN** switches to English.
 
 - **Parent:**
-  1. Type the 17-digit birth registration number at the top. Bangla digits work too. It's saved in the browser and used as soon as it's valid.
+  1. Type the 17-digit birth registration number at the top. Bangla digits work too. The field stops at 17 characters. The number is saved in the browser and used as soon as it's valid.
+     - **"আমার আবেদন" (My applications):** live holds, plus the 3 newest past applications. "আরও দেখুন" (See more) shows the rest.
   2. Press **আবেদন করুন** (Apply) on a class to hold a seat.
   3. The admission slip shows a live countdown, with **ভর্তি ফি দিন** (Pay) and **বাতিল** (Cancel).
   4. At 0 the hold shows **মেয়াদ উত্তীর্ণ** (Expired) and the seat frees, with no reload.
-- **অ্যাডমিন (Admin):** pick a class (1–10), a shift and the number of seats to create a class. The table shows total, held, confirmed and available seats for every class.
+- **অ্যাডমিন (Admin):** pick a class (1–10), a shift and the number of seats to create a class. A checkbox switches to a custom English name. Class names must be unique, ignoring case: the form blocks a duplicate, and the API returns 409. The table shows total, held, confirmed and available seats for every class.
+- **Opening Admin logs the student out.** There is no logout button, so switching to Admin clears the student number and the Parent view starts fresh. A note under the switch says so.
 - Seat counts refresh every 3 seconds.
 - If the server can't be reached, a banner says so and the last data stays on screen.
-
-Stop with `docker compose down`. Data survives in the `pgdata` volume. `docker compose down -v` deletes it.
 
 ## Configuration
 

@@ -17,9 +17,10 @@ public class HoldTests(DatabaseFixture db)
 
     private static string NewStudent() => $"2015{Interlocked.Increment(ref _next):D13}";
 
-    private static async Task<string> CreateClassAsync(HttpClient c, int seats, string name = "Test class")
+    // Class names are unique, so every test class gets its own name.
+    private static async Task<string> CreateClassAsync(HttpClient c, int seats, string? name = null)
     {
-        var res = await c.PostAsJsonAsync("/classes", new { name, totalSeats = seats });
+        var res = await c.PostAsJsonAsync("/classes", new { name = name ?? $"Test class {Guid.NewGuid():N}", totalSeats = seats });
         return (await res.Content.ReadFromJsonAsync<ClassDto>())!.Id;
     }
 
@@ -142,11 +143,12 @@ public class HoldTests(DatabaseFixture db)
     public async Task My_holds_lists_newest_first_with_class_name()
     {
         var student = NewStudent();
-        await Hold(_client, await CreateClassAsync(_client, 5, "Class 6 - Morning Shift"), student);
-        await Hold(_client, await CreateClassAsync(_client, 5, "Class 6 - Day Shift"), student);
+        var tag = Guid.NewGuid().ToString("N")[..6];
+        await Hold(_client, await CreateClassAsync(_client, 5, $"Morning {tag}"), student);
+        await Hold(_client, await CreateClassAsync(_client, 5, $"Day {tag}"), student);
 
         var mine = await (await _client.SendAsync(As(student, HttpMethod.Get, "/me/holds"))).Content.ReadFromJsonAsync<List<MyHoldDto>>();
-        Assert.Equal(["Class 6 - Day Shift", "Class 6 - Morning Shift"], mine!.Select(h => h.ClassName));
+        Assert.Equal([$"Day {tag}", $"Morning {tag}"], mine!.Select(h => h.ClassName));
         Assert.Empty((await (await _client.SendAsync(As(NewStudent(), HttpMethod.Get, "/me/holds"))).Content.ReadFromJsonAsync<List<MyHoldDto>>())!);
     }
 

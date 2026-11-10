@@ -76,6 +76,48 @@ describe("start view", () => {
   });
 });
 
+describe("logout and history", () => {
+  it("opening Admin logs the student out, and Parent starts fresh", async () => {
+    localStorage.setItem("studentId", ID);
+    stubApi({ "GET /classes": { status: 200, body: [cls] }, "GET /me/holds": { status: 200, body: [] } });
+    render(<App />);
+    await screen.findByText(bn.myApplicationsEmpty);
+    expect(screen.getByText(bn.adminLogoutNote)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: bn.viewAdmin }));
+    fireEvent.click(screen.getByRole("button", { name: bn.viewApplicant }));
+    expect((screen.getByLabelText(bn.studentIdLabel) as HTMLInputElement).value).toBe("");
+    expect(localStorage.getItem("studentId")).toBe("");
+    expect(screen.queryByText(bn.myApplications)).toBeNull();
+  });
+
+  it("shows the 3 newest past applications, the rest behind 'see more'", async () => {
+    localStorage.setItem("studentId", ID);
+    const past = Array.from({ length: 5 }, (_, i) => ({
+      holdId: `h_${i}`, classId: `c_${i}`, className: `Past ${i}`, status: "CANCELLED", expiresAt: "2026-01-01T00:00:00Z",
+    }));
+    stubApi({ "GET /classes": { status: 200, body: [cls] }, "GET /me/holds": { status: 200, body: past } });
+    render(<App />);
+    await screen.findByText("Past 0");
+    expect(screen.queryByText("Past 3")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: bn.showMore.replace("{n}", "2") }));
+    expect(screen.getByText("Past 4")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: bn.showLess }));
+    expect(screen.queryByText("Past 4")).toBeNull();
+  });
+});
+
+describe("ID field", () => {
+  it("shows a Bangla placeholder, stops at 17 characters, and is hidden in the admin view", async () => {
+    stubApi({ "GET /classes": { status: 200, body: [cls] } });
+    render(<App />);
+    const input = screen.getByLabelText(bn.studentIdLabel) as HTMLInputElement;
+    expect(input.placeholder).toBe(bn.studentIdPlaceholder);
+    expect(input.maxLength).toBe(17);
+    fireEvent.click(screen.getByRole("button", { name: bn.viewAdmin }));
+    expect(screen.queryByLabelText(bn.studentIdLabel)).toBeNull();
+  });
+});
+
 describe("17-digit student ID", () => {
   it("rejects anything that is not exactly 17 digits", async () => {
     stubApi({ "GET /classes": { status: 200, body: [cls] } });
@@ -160,6 +202,54 @@ describe("errors", () => {
     expect(screen.getByText(bn.formNeedClass)).toBeTruthy();
     expect(screen.getByText(bn.formNeedSeats)).toBeTruthy();
     expect(calls.some((c) => c.startsWith("POST"))).toBe(false);
+  });
+});
+
+describe("admin class names", () => {
+  const openAdmin = async (classes: unknown[]) => {
+    const calls = stubApi({
+      "GET /classes": { status: 200, body: classes },
+      "POST /classes": { status: 409, body: { error: "A class with this name already exists." } },
+    });
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: bn.viewAdmin }));
+    await screen.findByText(classes.length ? "Class 6 - Morning Shift" : bn.classListEmptyAdmin);
+    return calls;
+  };
+
+  it("blocks a class + shift that already exists, without calling the API", async () => {
+    const calls = await openAdmin([cls]);
+    fireEvent.change(screen.getByLabelText(bn.formClass), { target: { value: "6" } });
+    fireEvent.change(screen.getByLabelText(bn.formShift), { target: { value: "Morning" } });
+    fireEvent.change(screen.getByLabelText(bn.formSeats), { target: { value: "50" } });
+    fireEvent.click(screen.getByRole("button", { name: bn.formSubmit }));
+    expect(screen.getByText(bn.formDuplicate)).toBeTruthy();
+    expect(calls.some((c) => c.startsWith("POST"))).toBe(false);
+  });
+
+  it("custom names must be English, and duplicates are caught case-insensitively", async () => {
+    const calls = await openAdmin([cls]);
+    fireEvent.click(screen.getByLabelText(bn.formCustomToggle));
+    const name = screen.getByLabelText(bn.formCustomName);
+    fireEvent.change(screen.getByLabelText(bn.formSeats), { target: { value: "50" } });
+
+    fireEvent.change(name, { target: { value: "শ্রেণি ৬" } });
+    fireEvent.click(screen.getByRole("button", { name: bn.formSubmit }));
+    expect(screen.getByText(bn.formNameEnglish)).toBeTruthy();
+
+    fireEvent.change(name, { target: { value: "  class 6 - MORNING shift " } });
+    fireEvent.click(screen.getByRole("button", { name: bn.formSubmit }));
+    expect(screen.getByText(bn.formDuplicate)).toBeTruthy();
+    expect(calls.some((c) => c.startsWith("POST"))).toBe(false);
+  });
+
+  it("shows the API's 409 as a readable message if another admin got there first", async () => {
+    await openAdmin([]);
+    fireEvent.click(screen.getByLabelText(bn.formCustomToggle));
+    fireEvent.change(screen.getByLabelText(bn.formCustomName), { target: { value: "Class 6 - Science" } });
+    fireEvent.change(screen.getByLabelText(bn.formSeats), { target: { value: "50" } });
+    fireEvent.click(screen.getByRole("button", { name: bn.formSubmit }));
+    expect(await screen.findByText(bn.errDuplicateClass)).toBeTruthy();
   });
 });
 

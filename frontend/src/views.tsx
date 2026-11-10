@@ -4,10 +4,12 @@ import { isStudentId, normaliseStudentId, type ClassSeats, type HoldStatus, type
 import type { Lang, StringKey } from "./strings";
 
 const btn =
-  "inline-flex min-h-11 items-center justify-center rounded-md px-4 font-semibold transition-colors duration-[var(--dur-micro)] disabled:cursor-not-allowed disabled:opacity-50";
+  "inline-flex min-h-11 items-center justify-center whitespace-nowrap rounded-md px-4 font-semibold transition-colors duration-[var(--dur-micro)] disabled:cursor-not-allowed disabled:opacity-50";
 const primary = `${btn} bg-accent text-surface hover:bg-accent-strong active:bg-accent-strong`;
 const secondary = `${btn} border border-line bg-surface text-ink hover:bg-page active:bg-line`;
-const field = "min-h-11 w-full rounded-md border border-line bg-surface px-3 text-ink";
+// Row-level action: outlined, so 20 rows of it don't outshout the slip's solid pay button.
+const outline = `${btn} border-2 border-accent bg-surface text-accent hover:bg-accent-tint active:bg-accent-tint disabled:border-line disabled:text-muted disabled:opacity-100`;
+const field = "min-h-11 w-full rounded-md border border-edge bg-surface px-3 text-ink";
 
 // ---------- top bar ----------
 
@@ -30,7 +32,15 @@ export function IdBar(props: {
     <button
       type="button"
       aria-pressed={props.view === v}
-      onClick={() => props.onView(v)}
+      aria-describedby={v === "admin" ? "admin-logout-note" : undefined}
+      onClick={() => {
+        // No logout button exists, so opening Admin is the logout: the parent view starts empty next time.
+        if (v === "admin") {
+          setDraft("");
+          setBlurred(false);
+        }
+        props.onView(v);
+      }}
       className={`min-h-11 px-4 font-semibold ${props.view === v ? "bg-accent text-surface" : "bg-surface text-ink hover:bg-page"}`}
     >
       {t(key)}
@@ -39,16 +49,22 @@ export function IdBar(props: {
 
   return (
     <header className="border-b border-line bg-surface">
-      <div className="mx-auto flex w-full max-w-5xl flex-wrap items-end gap-3 px-4 py-3">
+      <div className="mx-auto flex w-full max-w-5xl flex-wrap items-start gap-3 px-4 py-3">
         <h1 className="mr-auto text-xl font-semibold">{t("appTitle")}</h1>
-        <div className="flex overflow-hidden rounded-md border border-line">
-          {tab("applicant", "viewApplicant")}
-          {tab("admin", "viewAdmin")}
+        <div className="flex flex-col items-end gap-1">
+          <div className="flex overflow-hidden rounded-md border border-line">
+            {tab("applicant", "viewApplicant")}
+            {tab("admin", "viewAdmin")}
+          </div>
+          <p id="admin-logout-note" className="text-sm text-muted">
+            {t("adminLogoutNote")}
+          </p>
         </div>
         <button type="button" className={secondary} onClick={props.onLang} aria-label={t("langSwitchLabel")}>
           {t("langSwitch")}
         </button>
       </div>
+      {props.view === "applicant" && (
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-1 px-4 pb-3">
         <label className="text-sm text-muted" htmlFor="student-id">
           {t("studentIdLabel")}
@@ -57,6 +73,8 @@ export function IdBar(props: {
           id="student-id"
           inputMode="numeric"
           autoComplete="off"
+          maxLength={17}
+          placeholder={t("studentIdPlaceholder")}
           className={`${field} num max-w-md ${invalid ? "border-error" : ""}`}
           value={draft}
           aria-invalid={invalid}
@@ -76,6 +94,7 @@ export function IdBar(props: {
           </p>
         )}
       </div>
+      )}
     </header>
   );
 }
@@ -171,15 +190,18 @@ export function ApplicantView(props: {
         </Section>
       )}
       <Section title={t("classList")}>
-        {!props.hasId && <p className="mb-3 text-held">{t("studentIdNeeded")}</p>}
+        {!props.hasId && <p className="mb-3 font-semibold text-ink">{t("studentIdNeeded")}</p>}
         <ClassList {...props} now={now} mode="applicant" />
       </Section>
     </>
   );
 }
 
+const HISTORY_SHOWN = 3;
+
 function MyApplications({ holds, now, actions }: { holds: MyHold[] | null; now: number; actions: Actions }) {
   const t = useT();
+  const [showAll, setShowAll] = useState(false);
   if (holds === null) return <Skeleton rows={1} />;
   if (holds.length === 0) return <Notice>{t("myApplicationsEmpty")}</Notice>;
   // A hold stays a slip until the server says EXPIRED, so at 0 the slip itself greys out and disables pay (rule 9).
@@ -191,14 +213,20 @@ function MyApplications({ holds, now, actions }: { holds: MyHold[] | null; now: 
         <Slip key={h.holdId} hold={h} now={now} actions={actions} />
       ))}
       {rest.length > 0 && (
+        // Live slips always show; past applications are newest first, 3 at a time.
         <ul className="divide-y divide-line rounded-md border border-line bg-surface">
-          {rest.map((h) => (
+          {(showAll ? rest : rest.slice(0, HISTORY_SHOWN)).map((h) => (
             <li key={h.holdId} className="flex flex-wrap items-center gap-3 px-4 py-3">
               <span className="mr-auto">{h.className}</span>
               <Badge status={effectiveStatus(h, now)} />
             </li>
           ))}
         </ul>
+      )}
+      {rest.length > HISTORY_SHOWN && (
+        <button type="button" className="self-start text-sm text-accent underline" onClick={() => setShowAll(!showAll)}>
+          {showAll ? t("showLess") : t("showMore", { n: rest.length - HISTORY_SHOWN })}
+        </button>
       )}
     </div>
   );
@@ -293,7 +321,7 @@ function ClassList(props: {
   const cols = props.mode === "applicant" ? "md:grid-cols-[minmax(0,2fr)_repeat(4,minmax(0,1fr))_minmax(0,1.4fr)]" : "md:grid-cols-[minmax(0,2fr)_repeat(4,minmax(0,1fr))]";
   return (
     <div className="rounded-md border border-line bg-surface">
-      <div className={`hidden gap-3 border-b border-line px-4 py-2 text-sm text-muted md:grid ${cols}`}>
+      <div className={`sticky top-0 z-[1] hidden gap-3 rounded-t-md border-b-2 border-line bg-page px-4 py-3 font-semibold text-ink md:grid ${cols}`}>
         <span>{t("colClass")}</span>
         <span>{t("colTotal")}</span>
         <span>{t("colHeld")}</span>
@@ -330,7 +358,7 @@ function ClassRow({
   const t = useT();
   const mine = holds?.find((h) => h.classId === c.id && ["HELD", "CONFIRMED"].includes(effectiveStatus(h, now)));
   const num = (label: StringKey, value: number) => (
-    <span className="flex items-baseline justify-between gap-2 md:block">
+    <span className="flex flex-col md:block">
       <span className="text-sm text-muted md:hidden">{t(label)}</span>
       <span className="num font-semibold">{value}</span>
     </span>
@@ -350,7 +378,7 @@ function ClassRow({
       action = (
         <button
           type="button"
-          className={`${primary} w-full md:w-auto`}
+          className={`${outline} w-full md:w-auto`}
           disabled={!hasId || actions.busy.has(`apply:${c.id}`)}
           onClick={() => actions.apply(c.id)}
         >
@@ -361,13 +389,13 @@ function ClassRow({
 
   return (
     <li className="px-4 py-3">
-      <div className={`grid grid-cols-1 items-center gap-2 md:gap-3 ${cols}`}>
-        <span className="font-semibold">{c.name}</span>
+      <div className={`grid grid-cols-4 items-center gap-2 md:gap-3 ${cols}`}>
+        <span className="col-span-4 font-semibold md:col-span-1">{c.name}</span>
         {num("colTotal", c.totalSeats)}
         {num("colHeld", c.heldSeats)}
         {num("colConfirmed", c.confirmedSeats)}
         {num("colAvailable", c.availableSeats)}
-        {action}
+        {action && <div className="col-span-4 md:col-span-1">{action}</div>}
       </div>
       <SeatBar c={c} />
       <details className="mt-1">
@@ -410,7 +438,7 @@ export function AdminView({ classes, failed, actions }: { classes: ClassSeats[] 
   return (
     <>
       <Section title={t("createClass")}>
-        <CreateClassForm actions={actions} />
+        <CreateClassForm actions={actions} classes={classes} />
       </Section>
       <Section title={t("classList")}>
         <ClassList classes={classes} failed={failed} actions={actions} now={now} mode="admin" />
@@ -419,8 +447,13 @@ export function AdminView({ classes, failed, actions }: { classes: ClassSeats[] 
   );
 }
 
-export function CreateClassForm({ actions }: { actions: Actions }) {
+// Custom names are English only (letters, digits, spaces and - . , ( ) / & '), so every class name reads the same everywhere.
+const ENGLISH_NAME = /^[A-Za-z0-9 .,()/&'-]+$/;
+
+export function CreateClassForm({ actions, classes }: { actions: Actions; classes: ClassSeats[] | null }) {
   const t = useT();
+  const [custom, setCustom] = useState(false);
+  const [customName, setCustomName] = useState("");
   const [classNo, setClassNo] = useState("");
   const [shift, setShift] = useState("");
   const [seats, setSeats] = useState("");
@@ -428,13 +461,22 @@ export function CreateClassForm({ actions }: { actions: Actions }) {
 
   const submit = async () => {
     const n = Number(seats);
+    const name = custom ? customName.trim().replace(/\s+/g, " ") : `Class ${classNo} - ${shift} Shift`;
     const errs: StringKey[] = [];
-    if (!classNo) errs.push("formNeedClass");
-    if (!shift) errs.push("formNeedShift");
+    if (custom) {
+      if (!name) errs.push("formNeedName");
+      else if (!ENGLISH_NAME.test(name)) errs.push("formNameEnglish");
+    } else {
+      if (!classNo) errs.push("formNeedClass");
+      if (!shift) errs.push("formNeedShift");
+    }
     if (!Number.isInteger(n) || n < 1) errs.push("formNeedSeats");
+    // Same rule as the API (case and outer spaces ignored); the API's 409 still backs this up.
+    if (!errs.length && classes?.some((c) => c.name.trim().toLowerCase() === name.toLowerCase())) errs.push("formDuplicate");
     setErrors(errs);
     if (errs.length) return;
-    if (await actions.createClass(`Class ${classNo} - ${shift} Shift`, n)) {
+    if (await actions.createClass(name, n)) {
+      setCustomName("");
       setClassNo("");
       setShift("");
       setSeats("");
@@ -453,27 +495,60 @@ export function CreateClassForm({ actions }: { actions: Actions }) {
       }}
       noValidate
     >
-      <div className="flex flex-col gap-1">
-        <label htmlFor="f-class" className="text-sm text-muted">{t("formClass")}</label>
-        <select id="f-class" className={field} value={classNo} onChange={(e) => setClassNo(e.target.value)} aria-invalid={errors.includes("formNeedClass")}>
-          <option value="">{t("formClassPick")}</option>
-          {Array.from({ length: 10 }, (_, i) => (
-            <option key={i + 1} value={i + 1}>
-              {t("formClassNumber", { n: i + 1 })}
-            </option>
-          ))}
-        </select>
-        {err("formNeedClass")}
-      </div>
-      <div className="flex flex-col gap-1">
-        <label htmlFor="f-shift" className="text-sm text-muted">{t("formShift")}</label>
-        <select id="f-shift" className={field} value={shift} onChange={(e) => setShift(e.target.value)} aria-invalid={errors.includes("formNeedShift")}>
-          <option value="">{t("formClassPick")}</option>
-          <option value="Morning">{t("formShiftMorning")}</option>
-          <option value="Day">{t("formShiftDay")}</option>
-        </select>
-        {err("formNeedShift")}
-      </div>
+      <label className="flex min-h-11 items-center gap-2 sm:col-span-4">
+        <input
+          type="checkbox"
+          className="size-5 accent-[var(--color-accent)]"
+          checked={custom}
+          onChange={(e) => {
+            setCustom(e.target.checked);
+            setErrors([]);
+          }}
+        />
+        <span>{t("formCustomToggle")}</span>
+      </label>
+      {custom ? (
+        <div className="flex flex-col gap-1 sm:col-span-2">
+          <label htmlFor="f-name" className="text-sm text-muted">{t("formCustomName")}</label>
+          <input
+            id="f-name"
+            className={field}
+            maxLength={200}
+            placeholder="Class 6 - Science"
+            value={customName}
+            onChange={(e) => setCustomName(e.target.value)}
+            aria-invalid={errors.includes("formNeedName") || errors.includes("formNameEnglish")}
+          />
+          {err("formNeedName")}
+          {err("formNameEnglish")}
+          {err("formDuplicate")}
+        </div>
+      ) : (
+        <>
+          <div className="flex flex-col gap-1">
+            <label htmlFor="f-class" className="text-sm text-muted">{t("formClass")}</label>
+            <select id="f-class" className={field} value={classNo} onChange={(e) => setClassNo(e.target.value)} aria-invalid={errors.includes("formNeedClass")}>
+              <option value="">{t("formClassPick")}</option>
+              {Array.from({ length: 10 }, (_, i) => (
+                <option key={i + 1} value={i + 1}>
+                  {t("formClassNumber", { n: i + 1 })}
+                </option>
+              ))}
+            </select>
+            {err("formNeedClass")}
+            {err("formDuplicate")}
+          </div>
+          <div className="flex flex-col gap-1">
+            <label htmlFor="f-shift" className="text-sm text-muted">{t("formShift")}</label>
+            <select id="f-shift" className={field} value={shift} onChange={(e) => setShift(e.target.value)} aria-invalid={errors.includes("formNeedShift")}>
+              <option value="">{t("formClassPick")}</option>
+              <option value="Morning">{t("formShiftMorning")}</option>
+              <option value="Day">{t("formShiftDay")}</option>
+            </select>
+            {err("formNeedShift")}
+          </div>
+        </>
+      )}
       <div className="flex flex-col gap-1">
         <label htmlFor="f-seats" className="text-sm text-muted">{t("formSeats")}</label>
         <input
