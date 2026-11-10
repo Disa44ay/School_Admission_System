@@ -33,6 +33,9 @@ obj/
 .vs/
 *.user
 
+# Python
+__pycache__/
+
 # Node
 node_modules/
 dist/
