@@ -19,7 +19,20 @@ docker compose up --build
 | API health | http://localhost:8080/health (200 when the database is reachable, 503 when it isn't) |
 | PostgreSQL | No host port. To inspect it: `docker compose exec db psql -U postgres -d school_admission` |
 
-CI (GitHub Actions) builds the images, starts the stack and checks both URLs on every push.
+CI (GitHub Actions) runs on every push. It builds the images, starts the stack, checks both URLs and runs the backend and frontend tests.
+
+## Using the UI
+
+The UI opens in Bangla on the **অভিভাবক** (Parent) view. **EN** switches to English.
+
+- **Parent:**
+  1. Type the 17-digit birth registration number at the top. Bangla digits work too. It's saved in the browser and used as soon as it's valid.
+  2. Press **আবেদন করুন** (Apply) on a class to hold a seat.
+  3. The admission slip shows a live countdown, with **ভর্তি ফি দিন** (Pay) and **বাতিল** (Cancel).
+  4. At 0 the hold shows **মেয়াদ উত্তীর্ণ** (Expired) and the seat frees, with no reload.
+- **অ্যাডমিন (Admin):** pick a class (1–10), a shift and the number of seats to create a class. The table shows total, held, confirmed and available seats for every class.
+- Seat counts refresh every 3 seconds.
+- If the server can't be reached, a banner says so and the last data stays on screen.
 
 Stop with `docker compose down`. Data survives in the `pgdata` volume. `docker compose down -v` deletes it.
 
@@ -52,6 +65,18 @@ Frontend tests (Vitest + React Testing Library, jsdom):
 docker compose --profile test run --rm frontend-tests
 ```
 
+End-to-end browser check (Playwright, against the running stack; optional, needs Python with `playwright` and Chromium installed):
+
+```bash
+HOLD_DURATION_SECONDS=15 docker compose up -d --build
+```
+
+```bash
+python -X utf8 e2e/ui_e2e.py
+```
+
+Results and screenshots are in `automatedTestAndResults.md` and `e2e/screenshots/`.
+
 ## Design
 
 The diagrams are in `planning/diagrams/`:
@@ -70,4 +95,6 @@ The diagrams are in `planning/diagrams/`:
 
 - `ASSUMPTIONS.md`: a summary of every decision, then the details: schema, validation, concurrency (Bonus 1), load handling and security limits.
 - `AI_USAGE.md`: which AI tools were used, how, and what they got wrong.
-- `automatedTestAndResults.md`: the tests, the tools used and the concurrency results.
+- `automatedTestAndResults.md`: every test suite, the tools used, the concurrency results, and the UI/UX checks and their results.
+- `planning/UI-UX-decisions.md`: how the UI was planned. It records the requirements, the research, each decision with its reason, and the Hallmark design review.
+- `e2e/`: the Playwright end-to-end script and its screenshots.

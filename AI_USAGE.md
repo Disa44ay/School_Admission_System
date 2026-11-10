@@ -24,6 +24,19 @@ All agents follow a custom instruction set written by the developer:
 
 The developer focuses on security and backend optimization and keeps pushing the agents to handle every corner case.
 
+## Skills used
+
+| Skill | Where it was used |
+|---|---|
+| **Ponytail** | All code: the smallest complete change, no speculative layers, and a "why" comment only where needed |
+| **Grilling** (an interview skill, from mattpocock/skills) | UI planning: 8 questions, one at a time, each with a recommended answer. The results are in `planning/UI-UX-decisions.md`. |
+| **Hallmark** | UI design review in app-screen scope. It changed cards to rows, made cancel confirm inline and added loading, empty and error states. During the build its `sloplint` linter checked the code until it was clean. |
+| **Humanizer / Unslop** | The wording of the docs and the UI text |
+| **webapp-testing** (Playwright, from davepoon/buildwithclaude) | End-to-end tests of the UI on the Docker stack |
+| **security-audit** (Cloudflare) | Installed for a later audit. The developer skipped it because the brief grades requirements, not security. |
+
+Every skill is installed on the E: drive and linked into the project. Each one was reviewed before linking.
+
 The Claude agents audited and cleaned up the scaffold that Gemini Flash 3.8 produced.
 
 ## How the automated tests were run
@@ -33,13 +46,18 @@ The Claude agents audited and cleaned up the scaffold that Gemini Flash 3.8 prod
 - The concurrency tests use `Task.WhenAll` to send 100 holds, or 10 confirms, at the same moment.
 - The full suite ran three times in a row locally to catch flaky timing. GitHub Actions then reran it inside Docker on every push.
 - Bonus 1 was checked by hand: two real API processes, hit with 120 parallel `curl` requests.
-- The UI was tested end to end with the **webapp-testing** skill. That skill writes headless Playwright (Chromium) scripts that drive the real Docker stack the way a parent would: creating a class, applying, a hold expiring, paying, and a full class. All test suites also run inside Docker.
+- The frontend tests (Vitest + React Testing Library) were written from the brief's UI rules. They cover rendering, the 17-digit ID, the countdown reaching zero, error display, and a check that Bangla mode shows no stray English. `fetch` is stubbed in them.
+- The UI was tested end to end with the **webapp-testing** skill. That skill writes headless Playwright (Chromium) scripts that drive the real Docker stack the way a parent would: creating a class, applying, a hold expiring, paying, and a full class. The script and its screenshots are in `e2e/`.
+- All test suites also run inside Docker, both locally and in GitHub Actions.
 - Results are in `automatedTestAndResults.md`.
 
 ## Mistakes the AI made and how they were caught
 
 - **Connection pool too large.** The concurrency test failed with PostgreSQL's "too many clients": the default pool of 100 matched PostgreSQL's whole limit. Caught by the test suite and fixed with a cap of 40 per API process.
 - **500 on malformed JSON.** In Development, ASP.NET throws on bad JSON, and the first version returned 500 instead of 400. Caught by the validation tests and fixed.
+- **The expired slip vanished.** At 0 the countdown slip disappeared, so the disabled pay button was never shown. Caught by the countdown test and fixed: the slip stays until the server says EXPIRED.
+- **Unlabelled admin form controls.** Caught in the browser's accessibility tree, and fixed with `<label for>`.
+- **Toasts covering the list on phones.** Caught by the Playwright run's phone screenshot. Fixed by showing only the newest toast.
 
 - **Wrong frontend framework.** Gemini scaffolded Next.js, but the brief requires React with Vite. Caught during the scaffold audit; the frontend was rebuilt on Vite.
 - **Bloat in the scaffold.** It had unused UI components, an unrelated npm package, middleware that duplicated an ASP.NET Core built-in, and an oversized start script. Caught by reading every file. All of it was removed.

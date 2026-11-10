@@ -14,9 +14,37 @@
 
 `fetch` is stubbed in these tests. One more test checks that every page load opens on the Parent view.
 
+## UI/UX checks
+
+| Check | Tool | Result |
+|---|---|---|
+| Design rules: tokens, focus rings, reduced motion, no sideways scroll, no generic "AI slop" patterns, control states | Hallmark `sloplint --scope app` | **0 FAIL, 0 REFLEX, 0 WARN**. The first run flagged missing `:active`/`:disabled` CSS states, unthemed browser surfaces (selection, caret and scrollbar colours) and a missing meta description. All three were fixed. |
+| Accessibility names | Browser accessibility tree | The admin form's controls had no proper names. Fixed with `<label for>`. |
+| Manual walk-through, real API, 20-second holds | Claude's browser pane | Apply, the slip and row timer, expiry with no reload, pay, the English switch, admin create, and a 375 px phone. All worked. |
+| Automated walk-through, Docker stack, 15-second holds | Playwright through the webapp-testing skill | **14/14**, below |
+
 ## End-to-end browser check (Playwright, headless Chromium)
 
-The real Docker stack ran with `HOLD_DURATION_SECONDS=15`. Result: **14/14 passed, no console errors.**
+- **Script:** [`e2e/ui_e2e.py`](e2e/ui_e2e.py).
+- **Screenshots** from the last run, in `e2e/screenshots/`:
+  - `1-admin.png`: the admin view after creating a class
+  - `2-slip.png`: the slip and its countdown
+  - `3-expired.png`: the hold expired and the seat freed
+  - `4-mobile.png`: the 375 px phone layout.
+
+To run it:
+
+```bash
+HOLD_DURATION_SECONDS=15 docker compose up -d --build
+```
+
+```bash
+python -X utf8 e2e/ui_e2e.py
+```
+
+It needs `pip install playwright` and `playwright install chromium` first.
+
+The real Docker stack ran with `HOLD_DURATION_SECONDS=15`. Result: **14/14 passed, no console errors.** The script was run again from the repo after cleanup, with the same result.
 
 1. The page opens on the Parent view, in Bangla.
 2. The admin creates a 2-seat class through the form, and a toast confirms it.

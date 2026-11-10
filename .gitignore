@@ -8,6 +8,7 @@
 !/automatedTestAndResults.md
 !/docker-compose.yml
 !/.github/
+!/e2e/
 !/backend/
 !/frontend/
 # Design diagrams only; the rest of planning/ stays local.
