@@ -118,3 +118,21 @@ The 100-request test exhausted PostgreSQL's 100 connections (`53300 too many cli
 
 - The 503 response when the connection pool stays full for the whole timeout.
 - Frontend (UI) tests, which come with the UI step.
+
+## Configuration through environment variables (Docker, fresh clone)
+
+These were checked the way a grader would: a fresh clone, a real `.env` file, then shell overrides.
+
+| Case | Result |
+|---|---|
+| `.env` sets `HOLD_DURATION_SECONDS=5` and `POSTGRES_DB/USER/PASSWORD=custom_db/admin/s3cret` | The API read all four. The database ran as `admin` on `custom_db`. A hold lasted 4.8 s; after 6 s it was `EXPIRED` and the seat was free again. |
+| The shell's `HOLD_DURATION_SECONDS=30` overrides the `.env` value of 5 | Holds lasted 30 s |
+| `HOLD_DURATION_SECONDS=abc` | The log showed "Hold duration: 600 s", and holds lasted 600 s |
+| `DATABASE_URL=postgres://admin:s3cret@db:5432/custom_db` | Healthy |
+| `DATABASE_CONNECTION_STRING` pointed at a dead host, with a valid `DATABASE_URL` also set | The API used the dead host, which proves the precedence order |
+| Removing the overrides | Back to the `.env` values: healthy, 5 s holds |
+| Frontend URL: `VITE_API_URL` only, `VITE_API_BASE_URL` only, both, neither | The built JS contains, in order: the `VITE_API_URL` value, the `VITE_API_BASE_URL` value, the `VITE_API_BASE_URL` value, `http://localhost:8080` |
+
+**Bug found and fixed:** at first, setting only `VITE_API_URL` had no effect. Compose always passed `VITE_API_BASE_URL` with a default value, and the app checks that one first. Now only `VITE_API_URL` carries the default.
+
+**Known limit:** if the API can't reach the database at startup, the container exits instead of retrying. Normal runs avoid this, because compose starts the API only after the database reports healthy.

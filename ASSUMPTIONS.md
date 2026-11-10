@@ -159,6 +159,6 @@ These figures are estimates. A load test with 1000 parallel clients will check t
   2. `DATABASE_URL`, in `postgres://user:pass@host:port/db` form, converted to a connection string
   3. `ConnectionStrings__DefaultConnection`
   4. a default pointing at the compose `db` service.
-- The frontend's API URL is `VITE_API_BASE_URL`, then `VITE_API_URL`, then `http://localhost:8080`. Vite builds these values into the files, so they must be set at build time: `docker compose build` reads them from the environment. Compose also sets them on the running web container, but there they have no effect.
+- The frontend's API URL is `VITE_API_BASE_URL`, then `VITE_API_URL`, then `http://localhost:8080`. Vite builds these values into the files, so they must be set at build time: `docker compose build` reads them from the environment. Compose gives `VITE_API_BASE_URL` no default, and only `VITE_API_URL` gets `http://localhost:8080`. That way, setting either one on its own takes effect. Compose also sets them on the running web container, but there they have no effect.
 - Database credentials are development values (`postgres`/`postgres`).
 - Data lives in the `pgdata` volume. It survives `docker compose down`; `docker compose down -v` deletes it.

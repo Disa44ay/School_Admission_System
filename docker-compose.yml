@@ -34,12 +34,14 @@ services:
   web:
     build:
       context: ./frontend
+      # The app uses VITE_API_BASE_URL, then VITE_API_URL. Only the last one carries the default,
+      # otherwise a default on the first would hide a VITE_API_URL someone sets.
       args:
-        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8080}
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-}
         VITE_API_URL: ${VITE_API_URL:-http://localhost:8080}
     # Vite bakes these in at build time; set here too for visibility, they have no runtime effect.
     environment:
-      VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8080}
+      VITE_API_BASE_URL: ${VITE_API_BASE_URL:-}
       VITE_API_URL: ${VITE_API_URL:-http://localhost:8080}
     ports:
       - "5173:80"
