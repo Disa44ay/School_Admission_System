@@ -8,6 +8,12 @@
 !/docker-compose.yml
 !/backend/
 !/frontend/
+# Design diagrams only; the rest of planning/ stays local.
+!/planning/
+/planning/*
+!/planning/diagrams/
+/planning/diagrams/*
+!/planning/diagrams/*.png
 
 # Explicitly local, even if the allowlist above changes.
 CLAUDE.md
