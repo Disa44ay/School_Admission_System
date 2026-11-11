@@ -1,72 +1,42 @@
 # AI usage
 
-## How we work
+The developer made every decision. AI was used as a tool to review, implement and test.
 
-The project is built step by step. A multi-agent loop checks each piece of work:
+## Models
 
-- **Claude Opus 5.5** is the manager.
-- **Gemini Argon** validates decisions and coordinates the project at a high level.
-- **Claude Haiku 5.5** is the worker for tasks that need no reasoning, such as file edits, boilerplate and running tests.
-- **Gemini Flash 3.8** designed the project scaffold and installed the required tools and packages.
-
-The developer writes the requirements and the database schema by hand and lists the corner cases. The AI agents then:
-1. check those decisions against the brief
-2. look for vulnerabilities
-3. point out anything that contradicts the brief or an earlier decision.
-
-Whenever two options conflict, the developer makes the final decision. Every decision is recorded in `decision.md`.
-
-All agents follow a custom instruction set written by the developer:
-
-- **Karpathy's guidelines** for generating and validating code: state assumptions, keep it simple, make surgical changes, and verify against clear goals.
-- **Ponytail** to keep the code minimal and reduce token cost.
-- **Hallmark** and **Unslop** skills for UI work.
-
-The developer focuses on security and backend optimization and keeps pushing the agents to handle every corner case.
-
-## Skills used
-
-| Skill | Where it was used |
+| Model | Used for |
 |---|---|
-| **Ponytail** | All code: the smallest complete change, no speculative layers, and a "why" comment only where needed |
-| **Grilling** (an interview skill, from mattpocock/skills) | UI planning: 8 questions, one at a time, each with a recommended answer. The results are in `planning/UI-UX-decisions.md`. |
-| **Hallmark** | UI design review in app-screen scope. It changed cards to rows, made cancel confirm inline and added loading, empty and error states. During the build its `sloplint` linter checked the code until it was clean. |
-| **Humanizer / Unslop** | The wording of the docs and the UI text |
-| **webapp-testing** (Playwright, from davepoon/buildwithclaude) | End-to-end tests of the UI on the Docker stack |
-| **security-audit** (Cloudflare) | Installed for a later audit. The developer skipped it because the brief grades requirements, not security. |
+| Claude Opus 5.5 | Reviewing the developer's design, finding contradictions, writing code and tests |
+| Claude Haiku 5.5 | File edits, boilerplate and running tests |
+| Gemini Argon | Second review of decisions and keeping the plan on track |
+| Gemini Flash 3.8 | First project scaffold and tool and package installation |
 
-Every skill is installed on the E: drive and linked into the project. Each one was reviewed before linking.
+## Workflow
 
-The Claude agents audited and cleaned up the scaffold that Gemini Flash 3.8 produced.
+1. **Developer:** wrote the requirements, designed the schema and listed the corner cases.
+2. **AI:** reviewed them against the brief and reported contradictions and risks.
+3. **Developer:** evaluated each finding, fixed the design and decided the flow.
+4. **AI:** implemented the code in the structure the developer specified.
+5. **Developer:** reviewed and tested by hand, and reported bugs and UI issues.
+6. **AI:** fixed them and added tests for each fix.
+7. **Developer:** reviewed and tested again. Pushed only after all tests passed.
 
-## How the automated tests were run
+## Instructions and skills
 
-- The manager agent wrote the xUnit tests from the rules in `ASSUMPTIONS.md`. A rule only counted as done after a test proved it.
-- The tests start the real API in memory with `WebApplicationFactory` and use a real PostgreSQL, never mocks. Each run gets a throwaway database.
-- The concurrency tests use `Task.WhenAll` to send 100 holds, or 10 confirms, at the same moment.
-- The full suite ran three times in a row locally to catch flaky timing. GitHub Actions then reran it inside Docker on every push.
-- Bonus 1 was checked by hand: two real API processes, hit with 120 parallel `curl` requests.
-- The frontend tests (Vitest + React Testing Library) were written from the brief's UI rules. They cover rendering, the 17-digit ID, the countdown reaching zero, error display, and a check that Bangla mode shows no stray English. `fetch` is stubbed in them.
-- The UI was tested end to end with the **webapp-testing** skill. That skill writes headless Playwright (Chromium) scripts that drive the real Docker stack the way a parent would: creating a class, applying, a hold expiring, paying, and a full class. The script and its screenshots are in `e2e/`.
-- All test suites also run inside Docker, both locally and in GitHub Actions.
-- Results are in `automatedTestAndResults.md`.
+- **Rules:** a custom instruction set from the developer, based on Karpathy's guidelines plus Ponytail, keeps changes minimal and verified.
+- **UI:** Hallmark (design review and its `sloplint` linter) and Humanizer/Unslop (wording).
+- **Planning:** the Grilling skill was used for the UI plan, recorded in `planning/UI-UX-decisions.md`.
+- **Testing:** the webapp-testing skill (Playwright) drove the end-to-end UI test in `e2e/`.
 
-## Mistakes the AI made and how they were caught
+## Where AI was wrong, and how it was caught
 
-- **Connection pool too large.** The concurrency test failed with PostgreSQL's "too many clients": the default pool of 100 matched PostgreSQL's whole limit. Caught by the test suite and fixed with a cap of 40 per API process.
-- **500 on malformed JSON.** In Development, ASP.NET throws on bad JSON, and the first version returned 500 instead of 400. Caught by the validation tests and fixed.
-- **The expired slip vanished.** At 0 the countdown slip disappeared, so the disabled pay button was never shown. Caught by the countdown test and fixed: the slip stays until the server says EXPIRED.
-- **Unlabelled admin form controls.** Caught in the browser's accessibility tree, and fixed with `<label for>`.
-- **Toasts covering the list on phones.** Caught by the Playwright run's phone screenshot. Fixed by showing only the newest toast.
+- **Wrong framework.** The scaffold used Next.js, not Vite. Caught by the developer's audit; rebuilt on Vite.
+- **Code before approval.** Backend code was written before the design was approved. The developer stopped it; the code was archived and the commit undone.
+- **Broken API contract.** Early proposals (login token, admin token, extra endpoints) would have changed the fixed contract. Caught in review and dropped by the developer.
+- **Pool too large.** The connection pool matched PostgreSQL's whole limit. Caught by the concurrency test; capped at 40.
+- **500 on bad JSON.** Malformed JSON returned 500 instead of 400. Caught by the validation tests.
+- **Expired slip vanished.** At 0 the slip disappeared instead of showing `EXPIRED`. Caught by the countdown test.
+- **Frontend URL ignored.** Setting only `VITE_API_URL` had no effect. Caught by the developer's environment-variable check.
+- **Duplicate classes and logout.** Duplicate class names were allowed, and switching views didn't log the student out. Both caught in the developer's manual testing.
 
-- **Wrong frontend framework.** Gemini scaffolded Next.js, but the brief requires React with Vite. Caught during the scaffold audit; the frontend was rebuilt on Vite.
-- **Bloat in the scaffold.** It had unused UI components, an unrelated npm package, middleware that duplicated an ASP.NET Core built-in, and an oversized start script. Caught by reading every file. All of it was removed.
-- **Code written before approval.** The manager agent implemented backend code before the developer had approved the design. The developer stopped it, the code was archived and the commit was undone. The rule now is no code without an explicit go.
-- **Wrong index claim.** A planning diagram said the expiry sweeper could use the `(class_id, status, expires_at)` index. That index starts with `class_id`, so the sweeper can't use it. Caught on review and corrected.
-- **Rules that would have broken the API contract.** Some early proposals needed changes to the fixed endpoints:
-  - a login token
-  - an admin token
-  - a seat number in the hold request
-  - extra endpoints for admin features.
-
-  The contradiction check flagged each one, and the developer removed them.
+Test details and results are in `automatedTestAndResults.md`.
