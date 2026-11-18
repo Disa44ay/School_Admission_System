@@ -4,6 +4,16 @@ First-come, first-served seat booking for school admissions. ASP.NET Core (.NET 
 
 **Status:** feature-complete. All 8 endpoints work. The bilingual UI (Bangla by default, English switch) is at http://localhost:5173. 44 backend tests and 18 frontend tests pass in Docker, and a 15-step Playwright end-to-end check passes.
 
+## How the backend works
+
+![Backend overview](planning/diagrams/0-Backend-overview.png)
+
+- **No overbooking:** placing a hold locks the class row in PostgreSQL, so requests for one class run one at a time, even across several API processes.
+- **Instant expiry:** seat counts are calculated from live holds using the database clock, so a seat frees the moment its hold expires.
+- **Database-enforced rules:** unique indexes allow one active hold per student per class and one class per name.
+
+The full decision trees are in [place hold](planning/diagrams/2-LLD-place-hold.png) and [confirm / cancel](planning/diagrams/3-LLD-confirm-and-cancel.png).
+
 ## Run
 
 Requires only Docker with Compose v2.
@@ -85,6 +95,7 @@ The diagrams are in `planning/diagrams/`:
 
 | Diagram | Shows |
 |---|---|
+| `0-Backend-overview.png` | One-page view of the backend: request types, locks, expiry and the database |
 | `1-HLD-system-architecture.png` | Containers, ports, and how the API, sweeper and database connect |
 | `2-LLD-place-hold.png` | The place-hold transaction: class row lock, expiry flush, checks, insert |
 | `3-LLD-confirm-and-cancel.png` | Confirm and cancel: hold row lock and the order of checks |
